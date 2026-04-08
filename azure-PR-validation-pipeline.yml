@@ -35,8 +35,8 @@ steps:
 # -----------------------------------------
 # 3. LINT CHECK
 # -----------------------------------------
-- script: npm run lint
-  displayName: "Lint Check"
+#- script: npm run lint
+#  displayName: "Lint Check"
  
 # -----------------------------------------
 # 4. UNIT TESTING

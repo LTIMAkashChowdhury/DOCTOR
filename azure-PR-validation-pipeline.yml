@@ -54,7 +54,7 @@ steps:
 # 6. SONARQUBE SCAN (SECURE)
 # -----------------------------------------
 - script: |
-    sonar-scanner \
+    /opt/sonar-scanner/bin/sonar-scanner \
       -Dsonar.host.url=$(SONAR_HOST_URL) \
       -Dsonar.login=$(SONAR_TOKEN)
   displayName: "SonarQube Scan"

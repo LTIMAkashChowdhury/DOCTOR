@@ -6,3 +6,4 @@ test('renders app heading', () => {
   const element = screen.getByText(/react/i);
   expect(element).toBeInTheDocument();
 });
+

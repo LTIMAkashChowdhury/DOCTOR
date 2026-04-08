@@ -10,7 +10,7 @@ pr:
       - develop
  
 pool:
-  name: <your-agent-pool>
+  name: Doctor Agent Pool
  
 # 🔐 Variables from Library
 variables:

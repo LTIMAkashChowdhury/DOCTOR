@@ -1,5 +1,5 @@
 # =========================================
-# PR VALIDATION PIPELINE (INDUSTRY GRADE)
+# PR VALIDATION PIPELINE (WITH COVERAGE)
 # =========================================
  
 trigger: none
@@ -12,7 +12,7 @@ pr:
 pool:
   name: Doctor Agent Pool
  
-# 🔐 Variables from Library
+# 🔐 Variables
 variables:
 - group: sonar-secrets
  
@@ -33,16 +33,16 @@ steps:
   displayName: "Install Dependencies"
  
 # -----------------------------------------
-# 3. LINT CHECK
+# 3. LINT CHECK (COMMENTED FOR NOW)
 # -----------------------------------------
-#- script: npm run lint
-#  displayName: "Lint Check"
+# - script: npm run lint
+#   displayName: "Lint Check"
  
 # -----------------------------------------
-# 4. UNIT TESTING
+# 4. UNIT TEST WITH COVERAGE
 # -----------------------------------------
-- script: CI=true npm test -- --watchAll=false
-  displayName: "Run Unit Tests"
+- script: CI=true npm test -- --coverage --watchAll=false
+  displayName: "Run Unit Tests with Coverage"
  
 # -----------------------------------------
 # 5. BUILD VALIDATION
@@ -51,7 +51,7 @@ steps:
   displayName: "Build Application"
  
 # -----------------------------------------
-# 6. SONARQUBE SCAN (SECURE)
+# 6. SONARQUBE SCAN
 # -----------------------------------------
 - script: |
     /opt/sonar-scanner/bin/sonar-scanner \
@@ -64,7 +64,7 @@ steps:
 # -----------------------------------------
 - script: |
     echo "Waiting for SonarQube processing..."
-    sleep 10
+    sleep 15
   displayName: "Wait for Sonar Processing"
  
 # -----------------------------------------
@@ -73,9 +73,12 @@ steps:
 - script: |
     echo "Checking SonarQube Quality Gate..."
  
-    STATUS=$(curl -s -u $(SONAR_TOKEN): \
-    "$(SONAR_HOST_URL)/api/qualitygates/project_status?projectKey=Doctor" \
-    | jq -r '.projectStatus.status')
+    RESPONSE=$(curl -s -u $(SONAR_TOKEN): \
+    "$(SONAR_HOST_URL)/api/qualitygates/project_status?projectKey=Doctor")
+ 
+    echo "Sonar Response: $RESPONSE"
+ 
+    STATUS=$(echo $RESPONSE | jq -r '.projectStatus.status')
  
     echo "Quality Gate Status: $STATUS"
  

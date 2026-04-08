@@ -1,0 +1,88 @@
+# =========================================
+# PR VALIDATION PIPELINE (INDUSTRY GRADE)
+# =========================================
+ 
+trigger: none
+ 
+pr:
+  branches:
+    include:
+      - develop
+ 
+pool:
+  name: <your-agent-pool>
+ 
+# 🔐 Variables from Library
+variables:
+- group: sonar-secrets
+ 
+steps:
+ 
+# -----------------------------------------
+# 1. SETUP NODE
+# -----------------------------------------
+- task: NodeTool@0
+  inputs:
+    versionSpec: '18.x'
+  displayName: "Install Node.js"
+ 
+# -----------------------------------------
+# 2. INSTALL DEPENDENCIES
+# -----------------------------------------
+- script: npm install
+  displayName: "Install Dependencies"
+ 
+# -----------------------------------------
+# 3. LINT CHECK
+# -----------------------------------------
+- script: npm run lint
+  displayName: "Lint Check"
+ 
+# -----------------------------------------
+# 4. UNIT TESTING
+# -----------------------------------------
+- script: CI=true npm test -- --watchAll=false
+  displayName: "Run Unit Tests"
+ 
+# -----------------------------------------
+# 5. BUILD VALIDATION
+# -----------------------------------------
+- script: npm run build
+  displayName: "Build Application"
+ 
+# -----------------------------------------
+# 6. SONARQUBE SCAN (SECURE)
+# -----------------------------------------
+- script: |
+    sonar-scanner \
+      -Dsonar.host.url=$(SONAR_HOST_URL) \
+      -Dsonar.login=$(SONAR_TOKEN)
+  displayName: "SonarQube Scan"
+ 
+# -----------------------------------------
+# 7. WAIT FOR SONAR PROCESSING
+# -----------------------------------------
+- script: |
+    echo "Waiting for SonarQube processing..."
+    sleep 10
+  displayName: "Wait for Sonar Processing"
+ 
+# -----------------------------------------
+# 8. QUALITY GATE CHECK
+# -----------------------------------------
+- script: |
+    echo "Checking SonarQube Quality Gate..."
+ 
+    STATUS=$(curl -s -u $(SONAR_TOKEN): \
+    "$(SONAR_HOST_URL)/api/qualitygates/project_status?projectKey=Doctor" \
+    | jq -r '.projectStatus.status')
+ 
+    echo "Quality Gate Status: $STATUS"
+ 
+    if [ "$STATUS" != "OK" ]; then
+      echo "❌ Quality Gate Failed"
+      exit 1
+    else
+      echo "✅ Quality Gate Passed"
+    fi
+  displayName: "Enforce Quality Gate"

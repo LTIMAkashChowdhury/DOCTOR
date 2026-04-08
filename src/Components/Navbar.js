@@ -107,7 +107,7 @@ function Navbar() {
           </li>
           <li>
             <a onClick={openNav} href="#contact">
-              Contact
+              Contactt
             </a>
           </li>
         </ul>

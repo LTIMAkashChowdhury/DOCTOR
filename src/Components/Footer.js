@@ -15,7 +15,7 @@ function Footer() {
             <p className="ft-description">
               Talk to online doctors and get medical advice, onlinee
               prescriptions, refills and medical notes within minutes. On-demand
-              healthcare services at your fingertips...
+              healthcare services at your fingertips..
             </p>
           </div>
 

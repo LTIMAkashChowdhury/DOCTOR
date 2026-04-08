@@ -102,7 +102,7 @@ function Navbar() {
           </li>
           <li>
             <a onClick={openNav} href="#doctors">
-              Doctors
+              Doctorss
             </a>
           </li>
           <li>

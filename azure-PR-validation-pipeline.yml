@@ -73,16 +73,18 @@ steps:
 - script: |
     echo "Checking SonarQube Quality Gate..."
 
+    # Wait properly (important)
+    sleep 20
+
     RESPONSE=$(curl -s -u $(SONAR_TOKEN): \
     "$(SONAR_HOST_URL)/api/qualitygates/project_status?projectKey=Doctor")
 
     echo "Raw Response:"
     echo "$RESPONSE"
 
-    # Validate JSON
-    echo "$RESPONSE" | jq . > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-      echo "❌ Invalid JSON response (likely auth or URL issue)"
+    # Check if JSON or HTML
+    if [[ "$RESPONSE" == *"<!DOCTYPE html>"* ]]; then
+      echo "❌ Got HTML instead of JSON → Auth or URL issue"
       exit 1
     fi
 

@@ -83,5 +83,3 @@ describe('Navbar Component', () => {
     expect(homeLinks.length).toBeGreaterThan(0);
   });
 });
-
-

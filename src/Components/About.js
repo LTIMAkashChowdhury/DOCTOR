@@ -15,7 +15,7 @@ function About() {
           <span>About Us</span>
         </h3>
         <p className="about-description">
-          Welcome to Health Plus, your trusted partner for accessible and
+          Welcome to Health Plus, your trusted partner for accessible and test
           personalized healthcare. Our expert doctors offer online consultations
           and specialized services, prioritizing your well-being. Join us on
           this journey towards a healthier you.
@@ -25,7 +25,7 @@ function About() {
 
         <SolutionStep
           title="Choose a Specialist"
-          description="Find your perfect specialist and book with ease at Health Plus. Expert doctors prioritize your health, offering tailored care."
+          description="Find your perfect specialist and book uuuu with ease at Health Plus. Expert doctors prioritize your health, offering tailored care."
         />
 
         <SolutionStep

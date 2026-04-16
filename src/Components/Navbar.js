@@ -39,7 +39,7 @@ function Navbar() {
       <ul className="navbar-items">
         <li>
           <Link to="/" className="navbar-links">
-            Home
+            Home home
           </Link>
         </li>
         <li>

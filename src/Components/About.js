@@ -16,7 +16,7 @@ function About() {
         </h3>
         <p className="about-description">
           Welcome to Health Plus, your trusted partner for accessible and testingggggg
-          personalized healthcare. Our expert doctors offer online consultationssss
+          personalized healthcare. Our expert doctors offer online consultationssss lets see
           and specialized services, prioritizing your well-being. Join us on
           this journey towards a healthier you.
         </p>

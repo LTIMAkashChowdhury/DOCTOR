@@ -1,0 +1,80 @@
+pool:
+  name: Doctor Agent Pool
+
+trigger:
+  branches:
+    include:
+      - develop
+
+pr: none
+
+variables:
+- group: Sonar-secrets
+- group: aws-secrets
+
+stages:
+- stage: Build_and_Push
+  displayName: "Build & Push Docker Image"
+
+  jobs:
+  - job: CI
+    displayName: "CI Job"
+
+    steps:
+
+    # 🔹 STEP 1: Install Node
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: "Install Node.js"
+
+    # 🔹 STEP 2: Install Dependencies
+    - script: npm install
+      displayName: "Install Dependencies"
+
+    # 🔹 STEP 3: Run Unit Tests
+    - script: |
+        CI=true npm test -- --coverage --watchAll=false
+      displayName: "Run Unit Tests"
+
+    # 🔹 STEP 4: Sonar Scan (optional but recommended)
+    - script: |
+        /opt/sonar-scanner/bin/sonar-scanner \
+        -Dsonar.host.url=$(SONAR_HOST_URL) \
+        -Dsonar.login=$(SONAR_TOKEN)
+      displayName: "Sonar Scan"
+
+    # 🔹 STEP 5: Build React App
+    - script: npm run build
+      displayName: "Build React App"
+
+    # 🔹 STEP 6: Docker Build
+    - script: |
+        docker build -t doctor-app:$(Build.BuildId) .
+      displayName: "Docker Build"
+
+    # 🔹 STEP 7: Configure AWS
+    - script: |
+        aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+        aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+        aws configure set default.region $(AWS_REGION)
+      displayName: "Configure AWS CLI"
+
+    # 🔹 STEP 8: Login to ECR
+    - script: |
+        aws ecr get-login-password --region $(AWS_REGION) | \
+        docker login --username AWS \
+        --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+      displayName: "Login to ECR"
+
+    # 🔹 STEP 9: Tag Image
+    - script: |
+        docker tag doctor-app:$(Build.BuildId) \
+        $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app:$(Build.BuildId)
+      displayName: "Tag Image"
+
+    # 🔹 STEP 10: Push Image
+    - script: |
+        docker push \
+        $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app:$(Build.BuildId)
+      displayName: "Push to ECR"

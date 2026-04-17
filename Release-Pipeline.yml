@@ -1,0 +1,60 @@
+trigger: none
+
+pool:
+  name: Doctor Agent Pool
+
+variables:
+- group: aws-secrets
+
+- name: ECR_REPO_URI
+  value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app
+
+- name: IMAGE_TAG
+  value: latest
+
+stages:
+- stage: Release
+  displayName: "Post Prod Release"
+
+  jobs:
+  - deployment: ReleaseJob
+    environment: PROD-RELEASE
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - script: |
+              aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+              aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+              aws configure set default.region $(AWS_REGION)
+
+          - script: |
+              aws ecr get-login-password --region $(AWS_REGION) | \
+              docker login --username AWS \
+              --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+
+          - script: docker pull $(ECR_REPO_URI):$(IMAGE_TAG)
+
+          - script: |
+              docker tag $(ECR_REPO_URI):$(IMAGE_TAG) $(ECR_REPO_URI):release-$(Build.BuildId)
+              docker tag $(ECR_REPO_URI):$(IMAGE_TAG) $(ECR_REPO_URI):stable
+
+          - script: |
+              docker push $(ECR_REPO_URI):release-$(Build.BuildId)
+              docker push $(ECR_REPO_URI):stable
+
+          - script: |
+              curl -u :$(System.AccessToken) \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -d '{
+                "sourceRefName": "refs/heads/develop",
+                "targetRefName": "refs/heads/main",
+                "title": "Release: Develop to Main",
+                "description": "Production validated release"
+              }' \
+              https://dev.azure.com/$(System.TeamProject)/_apis/git/repositories/$(Build.Repository.ID)/pullrequests?api-version=7.0
+            env:
+              System.AccessToken: $(System.AccessToken)

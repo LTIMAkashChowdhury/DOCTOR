@@ -17,7 +17,7 @@ function About() {
         <p className="about-description">
           Welcome to Health Plus, your trusted partner for accessible and
           personalized healthcare. Our expert doctors offer online consultations
-          and specialized services, prioritizing your well-being. Join us on
+          and this  specialized services, prioritizing your well-being. Join us on
           this  this this journey towards a healthier you.
         </p>
 

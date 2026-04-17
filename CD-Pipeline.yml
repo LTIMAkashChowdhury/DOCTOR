@@ -1,0 +1,93 @@
+pool:
+  name: Doctor Agent Pool
+
+trigger: none   # no auto trigger
+
+variables:
+- name: AZURE_SUBSCRIPTION
+  value: Doctor Project Service Connection
+
+- name: ECR_REPO_URI
+  value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app
+
+# 🔥 IMPORTANT: PASS IMAGE TAG MANUALLY OR FROM CI
+- name: IMAGE_TAG
+  value: latest
+
+- name: DEV_APP_NAME
+  value: doctor-dev-app
+
+- name: QA_APP_NAME
+  value: doctor-qa-app
+
+- name: UAT_APP_NAME
+  value: doctor-uat-app
+
+- name: PROD_APP_NAME
+  value: doctor-prod-app
+
+
+stages:
+
+# DEV
+- stage: Deploy_DEV
+  jobs:
+  - deployment: DeployDev
+    environment: DEV
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(DEV_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# QA
+- stage: Deploy_QA
+  dependsOn: Deploy_DEV
+  jobs:
+  - deployment: DeployQA
+    environment: QA
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(QA_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# UAT
+- stage: Deploy_UAT
+  dependsOn: Deploy_QA
+  jobs:
+  - deployment: DeployUAT
+    environment: UAT
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(UAT_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# PROD
+- stage: Deploy_PROD
+  dependsOn: Deploy_UAT
+  jobs:
+  - deployment: DeployProd
+    environment: PROD
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(PROD_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'

@@ -1,0 +1,106 @@
+trigger: none   # ❌ No direct trigger
+
+# ✅ Trigger from CI pipeline
+resources:
+  pipelines:
+    - pipeline: CI_PIPELINE
+      source: CI-Pipeline   # ⚠️ MUST match exact pipeline name in Azure DevOps
+      trigger: true
+
+pool:
+  name: Doctor Agent Pool
+
+variables:
+- group: aws-secrets
+
+- name: AZURE_SUBSCRIPTION
+  value: Doctor Project Service Connection
+
+- name: ECR_REPO_URI
+  value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app
+
+# ✅ IMPORTANT: Get image tag from CI pipeline
+- name: IMAGE_TAG
+  value: $(resources.pipeline.CI_PIPELINE.runID)
+
+- name: DEV_APP_NAME
+  value: doctor-dev-app
+
+- name: QA_APP_NAME
+  value: doctor-qa-app
+
+- name: UAT_APP_NAME
+  value: doctor-uat-app
+
+- name: PROD_APP_NAME
+  value: doctor-prod-app
+
+
+stages:
+
+# 🔹 DEV
+- stage: Deploy_DEV
+  displayName: "Deploy to DEV"
+  jobs:
+  - deployment: Dev
+    environment: DEV
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(DEV_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# 🔹 QA (Manual Approval via Environment)
+- stage: Deploy_QA
+  displayName: "Deploy to QA"
+  dependsOn: Deploy_DEV
+  jobs:
+  - deployment: QA
+    environment: QA
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(QA_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# 🔹 UAT (Manual Approval)
+- stage: Deploy_UAT
+  displayName: "Deploy to UAT"
+  dependsOn: Deploy_QA
+  jobs:
+  - deployment: UAT
+    environment: UAT
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(UAT_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+
+# 🔹 PROD (Strict Approval)
+- stage: Deploy_PROD
+  displayName: "Deploy to PROD"
+  dependsOn: Deploy_UAT
+  jobs:
+  - deployment: PROD
+    environment: PROD
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(PROD_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'

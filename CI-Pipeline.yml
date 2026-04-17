@@ -23,53 +23,100 @@ variables:
 
 stages:
 - stage: CI
-  displayName: "Build & Push Image"
+  displayName: "Build, Test & Push Image"
 
   jobs:
   - job: Build
+    displayName: "CI Job"
+
     steps:
 
     - checkout: self
       clean: true
 
-    - script: docker system prune -af
+    - task: Bash@3
+      displayName: "Clean Docker Cache"
+      inputs:
+        targetType: 'inline'
+        script: docker system prune -af
 
     - task: NodeTool@0
+      displayName: "Install Node.js"
       inputs:
         versionSpec: '18.x'
 
-    - script: npm ci
+    - task: Bash@3
+      displayName: "Install Dependencies"
+      inputs:
+        targetType: 'inline'
+        script: npm ci
 
-    - script: |
-        CI=true npm test -- --coverage --watchAll=false
+    - task: Bash@3
+      displayName: "Run Unit Tests"
+      inputs:
+        targetType: 'inline'
+        script: |
+          CI=true npm test -- --coverage --watchAll=false
 
-    - script: |
-        /opt/sonar-scanner/bin/sonar-scanner \
-        -Dsonar.host.url=$(SONAR_HOST_URL) \
-        -Dsonar.login=$(SONAR_TOKEN)
+    - task: Bash@3
+      displayName: "Sonar Scan"
+      inputs:
+        targetType: 'inline'
+        script: |
+          /opt/sonar-scanner/bin/sonar-scanner \
+          -Dsonar.host.url=$(SONAR_HOST_URL) \
+          -Dsonar.login=$(SONAR_TOKEN)
 
-    - script: |
-        export NODE_OPTIONS=--max-old-space-size=1024
-        npm run build
+    - task: Bash@3
+      displayName: "Build React App"
+      inputs:
+        targetType: 'inline'
+        script: |
+          export NODE_OPTIONS=--max-old-space-size=1024
+          npm run build
 
-    - script: rm -rf node_modules
+    - task: Bash@3
+      displayName: "Cleanup node_modules"
+      inputs:
+        targetType: 'inline'
+        script: rm -rf node_modules
 
-    - script: docker build -t $(ECR_REPO_NAME):$(IMAGE_TAG) .
+    - task: Bash@3
+      displayName: "Docker Build"
+      inputs:
+        targetType: 'inline'
+        script: docker build -t $(ECR_REPO_NAME):$(IMAGE_TAG) .
 
-    - script: |
-        aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
-        aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
-        aws configure set default.region $(AWS_REGION)
+    - task: Bash@3
+      displayName: "Configure AWS"
+      inputs:
+        targetType: 'inline'
+        script: |
+          aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+          aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+          aws configure set default.region $(AWS_REGION)
 
-    - script: |
-        aws ecr get-login-password --region $(AWS_REGION) | \
-        docker login --username AWS \
-        --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+    - task: Bash@3
+      displayName: "Login to ECR"
+      inputs:
+        targetType: 'inline'
+        script: |
+          aws ecr get-login-password --region $(AWS_REGION) | \
+          docker login --username AWS \
+          --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
 
-    - script: |
-        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):$(IMAGE_TAG)
-        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):latest
+    - task: Bash@3
+      displayName: "Tag Image"
+      inputs:
+        targetType: 'inline'
+        script: |
+          docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):$(IMAGE_TAG)
+          docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):latest
 
-    - script: |
-        docker push $(ECR_REPO_URI):$(IMAGE_TAG)
-        docker push $(ECR_REPO_URI):latest
+    - task: Bash@3
+      displayName: "Push Image"
+      inputs:
+        targetType: 'inline'
+        script: |
+          docker push $(ECR_REPO_URI):$(IMAGE_TAG)
+          docker push $(ECR_REPO_URI):latest

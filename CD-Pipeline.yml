@@ -1,16 +1,17 @@
+trigger: none
+
 pool:
   name: Doctor Agent Pool
 
-trigger: none   # no auto trigger
-
 variables:
+- group: aws-secrets
+
 - name: AZURE_SUBSCRIPTION
   value: Doctor Project Service Connection
 
 - name: ECR_REPO_URI
   value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app
 
-# 🔥 IMPORTANT: PASS IMAGE TAG MANUALLY OR FROM CI
 - name: IMAGE_TAG
   value: latest
 
@@ -26,13 +27,11 @@ variables:
 - name: PROD_APP_NAME
   value: doctor-prod-app
 
-
 stages:
 
-# DEV
 - stage: Deploy_DEV
   jobs:
-  - deployment: DeployDev
+  - deployment: Dev
     environment: DEV
     strategy:
       runOnce:
@@ -44,11 +43,10 @@ stages:
               appName: $(DEV_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# QA
 - stage: Deploy_QA
   dependsOn: Deploy_DEV
   jobs:
-  - deployment: DeployQA
+  - deployment: QA
     environment: QA
     strategy:
       runOnce:
@@ -60,11 +58,10 @@ stages:
               appName: $(QA_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# UAT
 - stage: Deploy_UAT
   dependsOn: Deploy_QA
   jobs:
-  - deployment: DeployUAT
+  - deployment: UAT
     environment: UAT
     strategy:
       runOnce:
@@ -76,11 +73,10 @@ stages:
               appName: $(UAT_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# PROD
 - stage: Deploy_PROD
   dependsOn: Deploy_UAT
   jobs:
-  - deployment: DeployProd
+  - deployment: PROD
     environment: PROD
     strategy:
       runOnce:

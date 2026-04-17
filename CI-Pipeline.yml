@@ -1,12 +1,12 @@
-pool:
-  name: Doctor Agent Pool
-
 trigger:
   branches:
     include:
       - develop
 
 pr: none
+
+pool:
+  name: Doctor Agent Pool
 
 variables:
 - group: Sonar-secrets

@@ -1,10 +1,9 @@
-trigger: none   # ❌ No direct trigger
+trigger: none
 
-# ✅ Trigger from CI pipeline
 resources:
   pipelines:
     - pipeline: CI_PIPELINE
-      source: CI-Pipeline   # ⚠️ MUST match exact pipeline name in Azure DevOps
+      source: CI-Pipeline   # must match name
       trigger: true
 
 pool:
@@ -19,7 +18,6 @@ variables:
 - name: ECR_REPO_URI
   value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/doctor-app
 
-# ✅ IMPORTANT: Get image tag from CI pipeline
 - name: IMAGE_TAG
   value: $(resources.pipeline.CI_PIPELINE.runID)
 
@@ -35,14 +33,12 @@ variables:
 - name: PROD_APP_NAME
   value: doctor-prod-app
 
-
 stages:
 
-# 🔹 DEV
 - stage: Deploy_DEV
-  displayName: "Deploy to DEV"
+  displayName: "Deploy DEV"
   jobs:
-  - deployment: Dev
+  - deployment: DEV
     environment: DEV
     strategy:
       runOnce:
@@ -54,9 +50,8 @@ stages:
               appName: $(DEV_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# 🔹 QA (Manual Approval via Environment)
 - stage: Deploy_QA
-  displayName: "Deploy to QA"
+  displayName: "Deploy QA"
   dependsOn: Deploy_DEV
   jobs:
   - deployment: QA
@@ -71,9 +66,8 @@ stages:
               appName: $(QA_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# 🔹 UAT (Manual Approval)
 - stage: Deploy_UAT
-  displayName: "Deploy to UAT"
+  displayName: "Deploy UAT"
   dependsOn: Deploy_QA
   jobs:
   - deployment: UAT
@@ -88,9 +82,8 @@ stages:
               appName: $(UAT_APP_NAME)
               containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
 
-# 🔹 PROD (Strict Approval)
 - stage: Deploy_PROD
-  displayName: "Deploy to PROD"
+  displayName: "Deploy PROD"
   dependsOn: Deploy_UAT
   jobs:
   - deployment: PROD

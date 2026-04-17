@@ -1,0 +1,204 @@
+# ============================================================
+# FULL CI/CD PIPELINE (CI + CD)
+# ============================================================
+ 
+pool:
+  name: Doctor Agent Pool
+ 
+trigger:
+  branches:
+    include:
+      - develop
+ 
+pr: none
+ 
+# ============================================================
+# VARIABLES (ALL CENTRALIZED)
+# ============================================================
+ 
+variables:
+- group: Sonar-secrets
+- group: aws-secrets
+ 
+# 🔹 AWS / ECR
+- name: ECR_REPO_NAME
+  value: doctor-app
+ 
+- name: IMAGE_TAG
+  value: $(Build.BuildId)
+ 
+- name: ECR_REPO_URI
+  value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME)
+ 
+# 🔹 AZURE
+- name: AZURE_SUBSCRIPTION
+  value: Doctor Project Service Connection
+ 
+# 🔹 APP SERVICE NAMES
+- name: DEV_APP_NAME
+  value: doctor-dev-app
+ 
+- name: QA_APP_NAME
+  value: doctor-qa-app
+ 
+- name: UAT_APP_NAME
+  value: doctor-uat-app
+ 
+- name: PROD_APP_NAME
+  value: doctor-prod-app
+ 
+ 
+# ============================================================
+# STAGES
+# ============================================================
+ 
+stages:
+ 
+# ================= CI =================
+- stage: CI
+  displayName: "Build, Test & Push Image"
+ 
+  jobs:
+  - job: Build
+    displayName: "CI Job"
+ 
+    steps:
+ 
+    - checkout: self
+      clean: true
+ 
+    - script: docker system prune -af
+      displayName: "Clean Docker Cache"
+ 
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: "Install Node.js"
+ 
+    - script: npm ci
+      displayName: "Install Dependencies"
+ 
+    - script: |
+        CI=true npm test -- --coverage --watchAll=false
+      displayName: "Run Unit Tests"
+ 
+    - script: |
+        /opt/sonar-scanner/bin/sonar-scanner \
+        -Dsonar.host.url=$(SONAR_HOST_URL) \
+        -Dsonar.login=$(SONAR_TOKEN)
+      displayName: "Sonar Scan"
+ 
+    - script: |
+        export NODE_OPTIONS=--max-old-space-size=1024
+        npm run build
+      displayName: "Build React App"
+ 
+    - script: rm -rf node_modules
+      displayName: "Cleanup node_modules"
+ 
+    - script: |
+        docker build -t $(ECR_REPO_NAME):$(IMAGE_TAG) .
+      displayName: "Docker Build"
+ 
+    - script: |
+        aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+        aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+        aws configure set default.region $(AWS_REGION)
+      displayName: "Configure AWS CLI"
+ 
+    - script: |
+        aws ecr get-login-password --region $(AWS_REGION) | \
+        docker login --username AWS \
+        --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+      displayName: "Login to ECR"
+ 
+    - script: |
+        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):$(IMAGE_TAG)
+        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):latest
+      displayName: "Tag Image"
+ 
+    - script: |
+        docker push $(ECR_REPO_URI):$(IMAGE_TAG)
+        docker push $(ECR_REPO_URI):latest
+      displayName: "Push to ECR"
+ 
+ 
+# ================= DEV =================
+- stage: Deploy_DEV
+  displayName: "Deploy to DEV"
+  dependsOn: CI
+ 
+  jobs:
+  - deployment: DeployDev
+    environment: DEV
+ 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(DEV_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+ 
+ 
+# ================= QA =================
+- stage: Deploy_QA
+  displayName: "Deploy to QA"
+  dependsOn: Deploy_DEV
+ 
+  jobs:
+  - deployment: DeployQA
+    environment: QA
+ 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(QA_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+ 
+ 
+# ================= UAT =================
+- stage: Deploy_UAT
+  displayName: "Deploy to UAT"
+  dependsOn: Deploy_QA
+ 
+  jobs:
+  - deployment: DeployUAT
+    environment: UAT
+ 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(UAT_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+ 
+ 
+# ================= PROD =================
+- stage: Deploy_PROD
+  displayName: "Deploy to PROD"
+  dependsOn: Deploy_UAT
+ 
+  jobs:
+  - deployment: DeployProd
+    environment: PROD
+ 
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureWebAppContainer@1
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              appName: $(PROD_APP_NAME)
+              containers: '$(ECR_REPO_URI):$(IMAGE_TAG)'
+ 

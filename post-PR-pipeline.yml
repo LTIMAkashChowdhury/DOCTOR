@@ -1,0 +1,90 @@
+pool:
+  name: Doctor Agent Pool
+
+trigger:
+  branches:
+    include:
+      - develop
+
+pr: none
+
+variables:
+- group: Sonar-secrets
+- group: aws-secrets
+
+# 🔹 Naming convention
+- name: ECR_REPO_NAME
+  value: doctor-app
+
+- name: IMAGE_TAG
+  value: $(Build.BuildId)
+
+- name: ECR_REPO_URI
+  value: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPO_NAME)
+
+stages:
+- stage: Build_and_Push
+  displayName: "Build & Push Docker Image"
+
+  jobs:
+  - job: CI
+    displayName: "CI Job"
+
+    steps:
+
+    # 🔹 Install Node
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: "Install Node.js"
+
+    # 🔹 Install Dependencies
+    - script: npm install
+      displayName: "Install Dependencies"
+
+    # 🔹 Run Tests
+    - script: |
+        CI=true npm test -- --coverage --watchAll=false
+      displayName: "Run Unit Tests"
+
+    # 🔹 Sonar Scan
+    - script: |
+        /opt/sonar-scanner/bin/sonar-scanner \
+        -Dsonar.host.url=$(SONAR_HOST_URL) \
+        -Dsonar.login=$(SONAR_TOKEN)
+      displayName: "Sonar Scan"
+
+    # 🔹 Build React
+    - script: npm run build
+      displayName: "Build React App"
+
+    # 🔹 Docker Build
+    - script: |
+        docker build -t $(ECR_REPO_NAME):$(IMAGE_TAG) .
+      displayName: "Docker Build"
+
+    # 🔹 AWS Config
+    - script: |
+        aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+        aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+        aws configure set default.region $(AWS_REGION)
+      displayName: "Configure AWS CLI"
+
+    # 🔹 Login to ECR
+    - script: |
+        aws ecr get-login-password --region $(AWS_REGION) | \
+        docker login --username AWS \
+        --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+      displayName: "Login to ECR"
+
+    # 🔹 Tag Image (version + latest)
+    - script: |
+        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):$(IMAGE_TAG)
+        docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(ECR_REPO_URI):latest
+      displayName: "Tag Image"
+
+    # 🔹 Push Image
+    - script: |
+        docker push $(ECR_REPO_URI):$(IMAGE_TAG)
+        docker push $(ECR_REPO_URI):latest
+      displayName: "Push to ECR"

@@ -15,10 +15,10 @@ function About() {
           <span>About Us</span>
         </h3>
         <p className="about-description">
-          Welcome to Health Plus, your trusted partner for accessible and testingggggg now
-          personalized healthcare. Our expert doctors offer online consultationssss now lets see
-          and specialized services, prioritizing your well-being. Join us onon okay
-          this journey towards a healthier you.
+          Welcome to Health Plus, your trusted partner for accessible and
+          personalized healthcare. Our expert doctors offer online consultations
+          and specialized services, prioritizing your well-being. Join us on
+          this  this this journey towards a healthier you.
         </p>
 
         <h4 className="about-text-title">Your Solutions</h4>

@@ -15,7 +15,7 @@ function About() {
           <span>About Us</span>
         </h3>
         <p className="about-description">
-          Faaaaaaaaaaat Welcome about to Health Plus, your trusted partner for accessible and testingggggg now
+          Put Welcome about to Health Plus, your trusted partner for accessible and testingggggg now
           personalized healthcare. Our expert doctors offer online consultationssss now lets see
           and specialized services, prioritizing your well-being. Join us onon okay
           this this journey towards a healthier you.

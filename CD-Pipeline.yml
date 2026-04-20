@@ -4,8 +4,11 @@ pr: none
 resources:
   pipelines:
     - pipeline: CI_PIPELINE
-      source: CI-Pipeline   # must match name
-      trigger: true
+      source: CI-Pipeline   # ⚠️ exact name
+      trigger:
+        branches:
+          include:
+            - develop
 
 pool:
   name: Doctor Agent Pool
